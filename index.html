@@ -116,6 +116,7 @@
 
   <!-- GAME -->
   <section id="screen-game" class="screen" hidden>
+    <div class="game-banner" id="game-banner" hidden></div>
     <header class="scoreboard" id="scoreboard">
       <div class="sb-team" id="sb-home"></div>
       <div class="sb-mid">
@@ -202,6 +203,18 @@
       <p class="week-note" id="week-note"></p>
       <div id="week-body"></div>
       <button class="btn btn-primary btn-big" id="btn-week-go">Continue</button>
+    </div>
+  </div>
+
+  <div class="overlay celebrate" id="ov-celebrate" hidden>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <div class="modal celebrate-card" id="celebrate-card">
+      <div class="cel-kicker" id="cel-kicker">Grey Cup Champions</div>
+      <div class="cel-art"><div id="cel-trophy"></div><div id="cel-helmet"></div></div>
+      <h2 id="cel-team"></h2>
+      <p class="cel-score" id="cel-score"></p>
+      <p class="cel-line" id="cel-line"></p>
+      <button class="btn btn-primary btn-big" id="btn-cel-go">Continue</button>
     </div>
   </div>
 

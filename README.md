@@ -34,6 +34,7 @@ Pick a team and play an 18-game season over 21 weeks, then the playoffs and the 
 - **Each week:** play your game, or sim it. Every other game is a full computer-vs-computer game with the same dice tables and play calling.
 - **Standings:** 2 points for a win. Ties in the standings go to wins, then head-to-head points, head-to-head point differential, division-game differential, overall differential, and finally a coin flip.
 - **Playoffs:** top three in each division. 2nd hosts 3rd in the semi-final, and 1st has a bye and hosts the final. **Crossover:** if the 4th-place team in one division has more points than the 3rd-place team in the other (a tie is not enough), it takes that spot in the other division's bracket. The Grey Cup is at a neutral site that changes each season.
+- **Playoff banners:** playoff games show a banner over the scoreboard and the round painted at midfield. The Grey Cup gets a gold banner with the trophy, and the winner gets a celebration with confetti and a fanfare.
 - **Saving:** the season saves in the browser after every play, separately from single games, so a single game never overwrites it.
 
 ## Onside kick

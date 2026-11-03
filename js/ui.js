@@ -133,11 +133,72 @@
   }
   function enterGame() {
     screen('game');
+    renderBanner();
     buildField();
     renderAll(false);
     if (s.last) showLast();
     else { $('result').textContent = 'Welcome to Armchair Football.'; setDice([1, 1]); }
     next();
+  }
+
+  /* ---------- playoff banners ---------- */
+  /* What kind of game this is, for banners: null for a regular game. */
+  function occasion() {
+    var sg = s && s.seasonGame;
+    if (!sg || !/^p[123]/.test(sg.game)) return null;
+    var n = sg.game.charAt(1);
+    if (n === '3') {
+      var host = sg.host || (sg.label || '').replace(/^Grey Cup at /, '');
+      return { round: 'greycup', title: (sg.year ? ordinalWord(sg.year) + ' ' : '') + 'Grey Cup', sub: host ? host : 'Championship game', field: 'GREY CUP' };
+    }
+    var div = sg.game.charAt(2) === 'W' ? 'West' : 'East';
+    return n === '1' ? { round: 'semi', title: div + ' Semi-Final', sub: 'CFL Playoffs', field: div.toUpperCase() + ' SEMI-FINAL', div: div } :
+      { round: 'final', title: div + ' Final', sub: 'Winner goes to the Grey Cup', field: div.toUpperCase() + ' FINAL', div: div };
+  }
+  function ordinalWord(n) { return n === 1 ? 'Season 1' : 'Season ' + n; }
+  function trophySVG(size) {
+    var w = size || 60, h = Math.round(w * 1.25), gid = 'silv' + (++trophySVG.n);
+    return ('<svg class="trophy" width="' + w + '" height="' + h + '" viewBox="0 0 48 60" aria-hidden="true"><defs>' +
+      '<linearGradient id="silv" x1="0" x2="1"><stop offset="0" stop-color="#8d96a0"/><stop offset=".35" stop-color="#f4f7fa"/><stop offset=".6" stop-color="#c4cbd3"/><stop offset="1" stop-color="#7b848e"/></linearGradient></defs>' +
+      '<path d="M10 6 H38 L36 24 C35 32 30 36 24 36 C18 36 13 32 12 24 Z" fill="url(#silv)" stroke="#5b636c" stroke-width="1"/>' +
+      '<path d="M10 9 C2 9 2 21 12 23 M38 9 C46 9 46 21 36 23" fill="none" stroke="url(#silv)" stroke-width="3"/>' +
+      '<ellipse cx="24" cy="6" rx="14" ry="2.6" fill="#e9edf1" stroke="#5b636c" stroke-width=".8"/>' +
+      '<rect x="21" y="36" width="6" height="7" fill="url(#silv)"/>' +
+      '<path d="M14 43 H34 L37 52 H11 Z" fill="#3b2a1a" stroke="#22170d" stroke-width=".8"/>' +
+      '<rect x="9" y="52" width="30" height="6" rx="1" fill="#2a1d11"/>' +
+      '<rect x="18" y="46" width="12" height="3" rx=".5" fill="#d9b44a"/></svg>').replace(/silv/g, gid);
+  }
+  trophySVG.n = 0;
+  function renderBanner() {
+    var b = $('game-banner'), o = occasion();
+    if (!o) { b.hidden = true; b.className = 'game-banner'; return; }
+    b.className = 'game-banner gb-' + o.round;
+    b.innerHTML = (o.round === 'greycup' ? trophySVG(30) : '<span class="gb-star">★</span>') +
+      '<div class="gb-text"><div class="gb-title">' + esc(o.title) + '</div><div class="gb-sub">' + esc(o.sub) + '</div></div>' +
+      (o.round === 'greycup' ? trophySVG(30) : '<span class="gb-star">★</span>');
+    b.hidden = false;
+  }
+
+  /* ---------- Grey Cup celebration ---------- */
+  function fanfare() { [392, 523, 659, 784, 659, 784, 1046].forEach(function (f, i) { beep(f, i === 6 ? 0.6 : 0.2, 'triangle', i * 0.17); }); }
+  function celebrate(champId, scoreText, line, onDone) {
+    var t = T.byId[champId], col = btnColour(t);
+    $('cel-trophy').innerHTML = trophySVG(96);
+    $('cel-helmet').innerHTML = T.helmetSVG(champId, 120);
+    $('cel-team').textContent = t.city + ' ' + t.name;
+    $('cel-score').textContent = scoreText || '';
+    $('cel-line').textContent = line || '';
+    $('celebrate-card').style.setProperty('--team', col);
+    var colours = [t.primary, t.secondary, '#ffcc33', '#ffffff', col], html = '';
+    var reduce = FAST || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (!reduce) for (var i = 0; i < 90; i++) {
+      var c = colours[i % colours.length];
+      html += '<i style="left:' + (Math.random() * 100).toFixed(1) + '%;background:' + c + ';animation-delay:' + (Math.random() * 2.5).toFixed(2) + 's;animation-duration:' + (2.8 + Math.random() * 2.4).toFixed(2) + 's;--rot:' + Math.floor(Math.random() * 720 - 360) + 'deg;--drift:' + Math.floor(Math.random() * 120 - 60) + 'px;width:' + (6 + Math.random() * 6).toFixed(0) + 'px"></i>';
+    }
+    $('confetti').innerHTML = html;
+    $('btn-cel-go').onclick = function () { show('ov-celebrate', false); $('confetti').innerHTML = ''; if (onDone) onDone(); };
+    show('ov-celebrate', true);
+    fanfare(); vibrate([80, 60, 80, 60, 200]);
   }
 
   /* ---------- field ---------- */
@@ -172,6 +233,9 @@
       var y = 130 - m;
       out.push('<line x1="22" x2="25" y1="' + y + '" y2="' + y + '" stroke="#fff" stroke-width=".3" opacity=".6"/><line x1="40" x2="43" y1="' + y + '" y2="' + y + '" stroke="#fff" stroke-width=".3" opacity=".6"/>');
     }
+    var occ = occasion();
+    if (occ) out.push('<text x="32.5" y="' + (occ.round === 'greycup' ? 72 : 73) + '" text-anchor="middle" font-size="' + (occ.round === 'greycup' ? 7.5 : 5.5) + '" font-weight="900" letter-spacing="1" fill="#fff" opacity=".2" font-family="system-ui,Arial,sans-serif">' + esc(occ.field) + '</text>' +
+      (occ.round === 'greycup' ? '<text x="32.5" y="80" text-anchor="middle" font-size="3.6" font-weight="800" letter-spacing="1.5" fill="#fff" opacity=".2" font-family="system-ui,Arial,sans-serif">' + esc(occ.sub.toUpperCase()) + '</text>' : ''));
     out.push('<line id="fdline" class="fdline" x1="0" x2="65" y1="0" y2="0" stroke="#ffd400" stroke-width="1" opacity="0"/>');
     out.push('<line id="losline" class="losline" x1="0" x2="65" y1="0" y2="0" stroke="#4aa3ff" stroke-width=".8" opacity="0"/>');
     out.push('<g id="ballg" style="transform: translate(32.5px, 75px)">' +
@@ -460,11 +524,23 @@
       if (s.seasonGame) recordSeasonGame(s); else removeKey(KEY_CUR);
       soundWhistle();
     }
+    var o = occasion();
+    if (o && o.round === 'greycup' && s.winner !== null && !s.celebrated) {
+      s.celebrated = true;
+      var st = s, w = s.winner;
+      if (season && season.id === s.seasonGame.season) { season.celebrated = s.seasonGame.game; saveSeason(); }
+      setTimeout(function () {
+        celebrate(st.teams[w], st.teams[1] + ' ' + st.score[1] + ', ' + st.teams[0] + ' ' + st.score[0] + (st.ot ? ' (OT)' : ''),
+          (st.ctrl[w] === 'human' ? 'You won the Grey Cup!' : 'They win the Grey Cup.') + (o.sub ? ' ' + o.sub + '.' : ''), showBox);
+      }, FAST ? 0 : 1200);
+      return;
+    }
     setTimeout(showBox, FAST ? 0 : 900);
   }
   function showBox() {
     var w = s.winner;
-    $('box-title').textContent = 'Final' + (s.ot ? ' (OT)' : '') + ': ' + team(0).id + ' ' + s.score[0] + ', ' + team(1).id + ' ' + s.score[1];
+    var occ = occasion();
+    $('box-title').textContent = (occ ? occ.title + ' · ' : '') + 'Final' + (s.ot ? ' (OT)' : '') + ': ' + team(0).id + ' ' + s.score[0] + ', ' + team(1).id + ' ' + s.score[1];
     $('box-body').innerHTML = '<div class="box-line">' + T.helmetSVG(team(w === null ? 0 : w).id, 64) +
       '<div><b>' + (w === null ? 'Tie game' : team(w).city + ' ' + team(w).name + ' win!') + '</b></div></div>' + statsHTML();
     var inSeason = !!s.seasonGame;
@@ -845,7 +921,7 @@
     }
     var ctrl = g.home === season.team ? ['human', 'cpu'] : ['cpu', 'human'];
     var st = E.newGame({ home: g.home, away: g.away, mode: 'solo', ctrl: ctrl });
-    st.seasonGame = { season: season.id, game: g.id, label: (g.label || 'Week ' + g.week) };
+    st.seasonGame = { season: season.id, game: g.id, label: (g.label || 'Week ' + g.week), host: season.host, year: season.year };
     beginGame(st);
     $('result').textContent = st.seasonGame.label + ': ' + tname(g.away) + (g.neutral ? ' vs ' : ' at ') + tname(g.home) + '.';
   }
@@ -888,6 +964,11 @@
     if (season.phase === 'done') hubTab = 'playoffs';
     scoresWeek = null;
     renderHub();
+    if (season.phase === 'done' && season.celebrated !== 'p3') {
+      season.celebrated = 'p3'; saveSeason();
+      var gc = season.playoffs.rounds[2].games[0];
+      celebrate(season.champion, scoreLine(gc), (season.champion === season.team ? 'Your team won the Grey Cup!' : 'Grey Cup at ' + season.host + '.'));
+    }
   }
   function simToEnd() {
     while (season.phase === 'regular') { S.simCurrent(season); S.advance(season); }

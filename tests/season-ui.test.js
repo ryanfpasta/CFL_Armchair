@@ -83,7 +83,9 @@ async function noOverflow(page) {
   const before = (await season(page)).live;
   await page.click('#btn-play');
   const resumed = await page.evaluate(() => JSON.parse(JSON.stringify(CFL.ui.state())));
-  ok(resumed.id === before.id && resumed.seq === before.seq, 'season game resumes at the same play');
+  // The computer may already have taken its next turn, so compare the saved play log as a prefix.
+  ok(resumed.id === before.id && resumed.seq >= before.seq &&
+    JSON.stringify(resumed.log.slice(0, before.log.length)) === JSON.stringify(before.log), 'season game resumes at the same play');
   await page.click('#btn-menu'); await page.click('#btn-quit');
 
   // Tabs render
@@ -122,11 +124,57 @@ async function noOverflow(page) {
   }
   sv = await season(page);
   ok(sv.phase === 'done' && !!sv.champion, 'Grey Cup played, champion: ' + sv.champion);
+  ok(await page.isVisible('#ov-celebrate') && (await page.textContent('#cel-team')).includes(require('../js/teams.js').byId[sv.champion].name), 'simulated Grey Cup shows the champion celebration');
+  await page.click('#btn-cel-go');
+  ok(!(await page.isVisible('#ov-celebrate')), 'celebration closes');
   ok(await page.isVisible('#btn-next-season'), 'champion card offers next season');
   await shot(page, 'champion');
   await page.click('#btn-next-season');
   sv = await season(page);
   ok(sv.year === 2 && sv.team === 'SSK' && sv.phase === 'regular', 'season 2 starts with the same team');
+
+  // Play the Grey Cup by hand: banner in the game, celebration at the end.
+  await page.evaluate(() => {
+    const S = CFL.Season, sv = S.newSeason({ team: 'BC', seed: 321 });
+    while (!(sv.phase === 'playoffs' && sv.playoffs.rounds.length === 3)) { S.simCurrent(sv); S.advance(sv); }
+    sv.team = sv.playoffs.rounds[2].games[0].home;
+    localStorage.setItem('cflArmchair.season', JSON.stringify(sv));
+  });
+  await page.reload();
+  await page.click('#btn-season');
+  ok((await page.textContent('#hub-next')).includes('Grey Cup'), 'hub shows the Grey Cup matchup');
+  await page.click('#btn-play');
+  ok(await page.isVisible('#game-banner') && /Grey Cup/.test(await page.textContent('#game-banner')), 'Grey Cup banner shows in the game');
+  ok((await page.innerHTML('#field')).includes('GREY CUP'), 'GREY CUP is painted at midfield');
+  await page.click('#coin-actions [data-call=H]'); await page.click('#btn-coin-go');
+  await shot(page, 'greycup-game');
+  n = 0;
+  while (!(await page.isVisible('#ov-celebrate')) && !(await page.isVisible('#ov-box')) && n++ < 4000) { const b = await page.$$('#buttons-pane .pbtn:not([disabled])'); if (b.length) await b[Math.floor(Math.random() * Math.min(b.length, 6))].click(); await page.waitForTimeout(3); }
+  ok(await page.isVisible('#ov-celebrate'), 'played Grey Cup ends with the celebration');
+  await shot(page, 'celebration');
+  await page.click('#btn-cel-go');
+  ok(await page.isVisible('#ov-box') && (await page.textContent('#box-title')).startsWith('Season'), 'then the box score, titled as the Grey Cup');
+  await page.click('#btn-box-season'); await page.click('#btn-week-go');
+  ok(!(await page.isVisible('#ov-celebrate')) && (await season(page)).phase === 'done', 'no second celebration; season complete');
+  // A regular single game has no banner.
+  await page.click('#btn-hub-back'); await page.click('#btn-newgame');
+  await page.click('#grid-team1 [data-team=BC]'); await page.click('#grid-team2 [data-team=CGY]'); await page.click('#btn-start');
+  ok(!(await page.isVisible('#game-banner')), 'exhibition games have no banner');
+  await page.click('#coin-actions [data-call=H]'); await page.click('#btn-coin-go');
+  await page.click('#btn-menu'); await page.click('#btn-quit');
+
+  // Semi-final banner
+  await page.evaluate(() => {
+    const S = CFL.Season, sv = S.newSeason({ team: 'BC', seed: 99 });
+    while (sv.phase === 'regular') { S.simCurrent(sv); S.advance(sv); }
+    sv.team = sv.playoffs.rounds[0].games[0].home;
+    localStorage.setItem('cflArmchair.season', JSON.stringify(sv));
+  });
+  await page.reload(); await page.click('#btn-season'); await page.click('#btn-play');
+  ok(/Semi-Final/i.test(await page.textContent('#game-banner')), 'semi-final banner shows');
+  await shot(page, 'semi-game');
+  await page.click('#coin-actions [data-call=H]'); await page.click('#btn-coin-go');
+  await page.click('#btn-menu'); await page.click('#btn-quit');
 
   // Desktop layout
   await page.setViewportSize({ width: 1280, height: 900 });
