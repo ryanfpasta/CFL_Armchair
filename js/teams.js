@@ -112,6 +112,17 @@
   /* ---------- helmet ----------
      Side-view helmet facing right, in a 100x80 box: shaded shell, crown stripe,
      ear hole, jaw pad, face mask and chin strap, with the emblem (or the player's decal) on the side. */
+  /* Team badge for flat surfaces such as the end zones: the player's logo if one is set, else the drawn emblem.
+     Centred on cx,cy and fitted in a size x size box (SVG user units). */
+  function badgeSVG(id, cx, cy, size) {
+    var t = byId[id], c = custom[id];
+    if (c && c.src) {
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + (size / 2 + 0.8) + '" fill="#fff" opacity=".92"/>' +
+        '<image href="' + c.src + '" x="' + (cx - size / 2 + 0.6) + '" y="' + (cy - size / 2 + 0.6) + '" width="' + (size - 1.2) + '" height="' + (size - 1.2) + '" preserveAspectRatio="xMidYMid meet"/>';
+    }
+    return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + (size / 24) + ')">' + EMBLEMS[id](t.primary, t.secondary) + '</g>';
+  }
+
   var uid = 0;
   var SHELL = 'M18 60 C9 40 17 13 46 7 C71 2 91 18 91 40 L89 48 L73 50 C69 52 67 57 67 63 L65 70 L35 72 C26 72 20 67 18 60 Z';
   function helmetSVG(id, size, flip) {
@@ -171,7 +182,7 @@
     return out + '</svg>';
   }
 
-  var api = { TEAMS: TEAMS, byId: byId, helmetSVG: helmetSVG, emblemSVG: emblemSVG, setCustomArt: setCustomArt, getCustomArt: getCustomArt };
+  var api = { TEAMS: TEAMS, byId: byId, helmetSVG: helmetSVG, emblemSVG: emblemSVG, badgeSVG: badgeSVG, setCustomArt: setCustomArt, getCustomArt: getCustomArt };
   root.CFL = root.CFL || {};
   root.CFL.Teams = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

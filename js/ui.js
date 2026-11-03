@@ -140,10 +140,12 @@
     // end zones: top = away's own end zone (home attacks it), bottom = home's own end zone
     out.push('<g id="ez-top"><rect x="0" y="0" width="65" height="20" fill="' + a.primary + '"/>' +
       '<rect x="0" y="0" width="65" height="20" fill="none" stroke="' + a.secondary + '" stroke-width="1.2"/>' +
-      '<text x="32.5" y="13.5" text-anchor="middle" font-size="9" font-weight="900" fill="' + a.secondary + '" letter-spacing="2" font-family="system-ui,Arial,sans-serif">' + a.id + '</text></g>');
+      '<text x="32.5" y="13.5" text-anchor="middle" font-size="9" font-weight="900" fill="' + a.secondary + '" letter-spacing="1" font-family="system-ui,Arial,sans-serif">' + a.id + '</text>' +
+      T.badgeSVG(a.id, 9.5, 10, 14) + T.badgeSVG(a.id, 55.5, 10, 14) + '</g>');
     out.push('<g id="ez-bot"><rect x="0" y="130" width="65" height="20" fill="' + h.primary + '"/>' +
       '<rect x="0" y="130" width="65" height="20" fill="none" stroke="' + h.secondary + '" stroke-width="1.2"/>' +
-      '<text x="32.5" y="143.5" text-anchor="middle" font-size="9" font-weight="900" fill="' + h.secondary + '" letter-spacing="2" font-family="system-ui,Arial,sans-serif">' + h.id + '</text></g>');
+      '<text x="32.5" y="143.5" text-anchor="middle" font-size="9" font-weight="900" fill="' + h.secondary + '" letter-spacing="1" font-family="system-ui,Arial,sans-serif">' + h.id + '</text>' +
+      T.badgeSVG(h.id, 9.5, 140, 14) + T.badgeSVG(h.id, 55.5, 140, 14) + '</g>');
     // yard lines every 10 from each goal line, plus the 55
     var marks = [0, 10, 20, 30, 40, 50, 55, 60, 70, 80, 90, 100, 110];
     marks.forEach(function (m) {
@@ -564,7 +566,7 @@
       $('grid-team2').innerHTML = T.TEAMS.map(function (t) { return teamButton(t, 't2'); }).join('');
       syncSetup();
     }
-    if (s && !$('screen-game').hidden) renderAll();
+    if (s && !$('screen-game').hidden) { buildField(); renderAll(); }
   }
   function bindArt() {
     $('btn-art-start').onclick = openArt;
