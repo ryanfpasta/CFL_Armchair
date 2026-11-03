@@ -9,6 +9,7 @@ A web emulation of the 1985 Canadian Armchair Football dice game. It is plain HT
 ## Files
 - `index.html`: the screens and overlays
 - `css/style.css`: layout (phone portrait first; three columns from 900 px wide)
+- `js/logos.js`: the owner's team logo images, used as the default helmet art (personal, non-commercial use)
 - `js/teams.js`: the 9 teams, their colours, and a helmet drawn in code with an original emblem for each nickname (lion, horse, elk antlers, wheat, bomber, tiger stripes, lark, split shield, sailing ship). These are new designs, not CFL or team trademarks.
 - `js/engine.js`: the rules (dice tables, downs, scoring, kicking, clock, overtime, stats). It has no DOM code.
 - `js/ai.js`: computer play calling
