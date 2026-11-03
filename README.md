@@ -36,6 +36,9 @@ Pick a team and play an 18-game season over 21 weeks, then the playoffs and the 
 - **Playoffs:** top three in each division. 2nd hosts 3rd in the semi-final, and 1st has a bye and hosts the final. **Crossover:** if the 4th-place team in one division has more points than the 3rd-place team in the other (a tie is not enough), it takes that spot in the other division's bracket. The Grey Cup is at a neutral site that changes each season.
 - **Saving:** the season saves in the browser after every play, separately from single games, so a single game never overwrites it.
 
+## Onside kick
+An onside kick is available on any kickoff in the last 3 minutes of the 2nd or 4th quarter. The kicking team recovers it on 2d6 of 11 or more (1 in 12) and gets the ball at its own 45. Otherwise the receiving team takes over at the kicking team's 45. The computer tries an onside kick when it's trailing in the 4th quarter with 2 minutes or less left, or when it's down by more than 8 with 3 minutes or less left.
+
 ## Interpretations of the brief
 These are places where the brief left room, and the build makes a deliberate choice:
 1. **Stopped clock.** The listed per-play times are treated as running-clock times, since they include the huddle. When the clock is stopped before the snap (after a timeout, or anywhere in the last 3 minutes of a half), a run, completion or sack burns 10 s instead of 35 s or 30 s. Kneel always burns 40 s. Without this rule, timeouts and "clock stops after every play" would do nothing.

@@ -79,6 +79,20 @@ section('Kickoffs');
   const t = game({ phase: 'kickoff', kicker: 1 }); E.act(t, 'KICKOFF', roll(12)); eq([t.score[0], t.phase], [6, 'convert'], 'kickoff return TD');
 }
 
+section('Onside kick');
+{ const early = game({ phase: 'kickoff', kicker: 0, quarter: 2, clock: 400 });
+  ok(!E.availableActions(early).find(x => x.id === 'ONSIDE').enabled, 'onside not available before the last 3 minutes');
+  ok(!E.availableActions(game({ phase: 'kickoff', kicker: 0, quarter: 3, clock: 100 })).find(x => x.id === 'ONSIDE').enabled, 'onside not available in Q3');
+  const w = game({ phase: 'kickoff', kicker: 0, quarter: 4, clock: 150 }); E.act(w, 'ONSIDE', roll(11));
+  eq([w.poss, w.ballOn, w.down, w.clock], [0, 45, 1, 140], 'onside recovered on 11: kicking team at own 45');
+  const l = game({ phase: 'kickoff', kicker: 0, quarter: 2, clock: 180 }); E.act(l, 'ONSIDE', roll(10));
+  eq([l.poss, l.ballOn], [1, 65], 'onside fails on 10: receiver at the kicking team 45');
+  const ai = game({ phase: 'kickoff', kicker: 1, quarter: 4, clock: 100 }); ai.score = [17, 10];
+  eq(AI.decide(ai).id, 'ONSIDE', 'computer trailing late -> onside');
+  const ai2 = game({ phase: 'kickoff', kicker: 1, quarter: 4, clock: 100 }); ai2.score = [10, 17];
+  eq(AI.decide(ai2).id, 'KICKOFF', 'computer leading -> normal kickoff');
+}
+
 section('Turnovers');
 { const s = game({ ballOn: 50 }); E.act(s, 'LP', roll(3)); eq([s.poss, s.ballOn, s.down, s.stats[0].ints, s.clock], [1, 60, 1, 1, 585], 'interception at LOS, no return, 15 s');
   const f = game({ ballOn: 50 }); E.act(f, 'LR', roll(2)); eq([f.poss, f.ballOn, f.stats[0].fumbles], [1, 60, 1], 'fumble lost at LOS');

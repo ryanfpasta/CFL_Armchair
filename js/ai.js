@@ -20,7 +20,12 @@
   /* Returns { id, why } */
   function decide(s, rng) {
     rng = rng || Math.random;
-    if (s.phase === 'kickoff') return { id: 'KICKOFF', why: 'kickoff' };
+    if (s.phase === 'kickoff') {
+      var behind = s.score[1 - s.kicker] - s.score[s.kicker];
+      if (s.quarter === 4 && s.clock <= 180 && behind > 0 && (s.clock <= 120 || behind > 8))
+        return { id: 'ONSIDE', why: 'trailing late, onside kick' };
+      return { id: 'KICKOFF', why: 'kickoff' };
+    }
     var me = s.poss, lead = s.score[me] - s.score[1 - me], q = s.quarter, clock = s.clock;
     var inOT = q > 4;
     if (s.phase === 'convert') {

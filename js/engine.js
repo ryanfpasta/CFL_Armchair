@@ -192,6 +192,9 @@
     var A = [];
     if (s.phase === 'kickoff') {
       A.push({ id: 'KICKOFF', label: 'Kick Off', enabled: true });
+      var late = (s.quarter === 2 || s.quarter === 4) && s.clock <= 180;
+      A.push({ id: 'ONSIDE', label: 'Onside Kick', enabled: late,
+        reason: late ? 'Recover on 11+ (1 in 12)' : 'Last 3 minutes of a half only' });
     } else if (s.phase === 'convert') {
       A.push({ id: 'CONV1', label: '1-pt Kick', enabled: true, reason: 'Good on 3+' });
       A.push({ id: 'CONV2', label: '2-pt Play', enabled: true, reason: 'Good on 8+' });
@@ -224,6 +227,7 @@
     var r = { action: id, team: snap.team, rolls: [], events: [], headline: '', logText: '', yards: null, score: null, seconds: 0 };
     if (id === 'TIMEOUT') doTimeout(s, r);
     else if (id === 'KICKOFF') doKickoff(s, r, rng);
+    else if (id === 'ONSIDE') doOnside(s, r, rng);
     else if (id === 'CONV1' || id === 'CONV2') doConvert(s, r, rng, id === 'CONV2');
     else if (id === 'PUNT') doPunt(s, r, rng);
     else if (id === 'FG') doFieldGoal(s, r, rng);
@@ -463,6 +467,26 @@
     }
   }
 
+  /* Onside kick: last 3 minutes of a half. Recovered by the kicking team on 2d6 of ONSIDE_NEED or more,
+     at its own 45 (the ball must travel 10 yards from the 35). Otherwise the receiving team takes over there,
+     at the kicking team's 45. */
+  var ONSIDE_NEED = 11;
+  function doOnside(s, r, rng) {
+    var k = s.kicker, rec = other(k);
+    var d = roll(rng), sum = d[0] + d[1];
+    r.rolls.push({ label: 'Onside Kick', dice: d });
+    burn(s, r, TIME.kick, false, k);
+    if (sum >= ONSIDE_NEED) {
+      giveBall(s, k, 45);
+      r.headline = 'Onside kick — RECOVERED by ' + abbr(s, k) + '! Ball at ' + spotName(s, k, 45) + '.';
+      r.logText = 'Onside kick recovered by ' + abbr(s, k) + ', ball at ' + spotName(s, k, 45);
+    } else {
+      giveBall(s, rec, 65);
+      r.headline = 'Onside kick — ' + abbr(s, rec) + ' recovers at ' + spotName(s, rec, 65) + '.';
+      r.logText = 'Onside kick, ' + abbr(s, rec) + ' recovers at ' + spotName(s, rec, 65);
+    }
+  }
+
   function coinToss(s, rng, winner) {
     rng = rng || Math.random;
     var w = (winner === 0 || winner === 1) ? winner : (rng() < 0.5 ? 0 : 1);
@@ -479,7 +503,7 @@
   }
 
   var api = {
-    PLAYS: PLAYS, KICKOFF: KICKOFF, PUNT: PUNT, RETURN: RETURN, TIME: TIME,
+    PLAYS: PLAYS, KICKOFF: KICKOFF, ONSIDE_NEED: ONSIDE_NEED, PUNT: PUNT, RETURN: RETURN, TIME: TIME,
     newGame: newGame, coinToss: coinToss, act: act, availableActions: availableActions,
     actingTeam: actingTeam, fgDistance: fgDistance, fgNeed: fgNeed, clockIsStopped: clockIsStopped,
     toGo: toGo, downDistance: downDistance, situation: situation, spotName: spotName,

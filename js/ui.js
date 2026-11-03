@@ -291,7 +291,8 @@
     var col = btnColour(t);
     var whose = '<div class="whose">' + (s.mode === 'pnp' ? '<b>' + t.city + ' ' + t.name + '</b> — your call' : 'Your call') + '</div>';
     if (s.phase === 'kickoff') {
-      pane.innerHTML = whose + '<div class="single-action">' + pbtn(by.KICKOFF, col) + '</div>';
+      pane.innerHTML = whose + '<div class="single-action">' + pbtn(by.KICKOFF, col) + '</div>' +
+        '<div class="prow" style="grid-template-columns:1fr">' + pbtn(by.ONSIDE) + '</div>';
     } else if (s.phase === 'convert') {
       pane.innerHTML = whose + '<div class="single-action prow" style="margin-top:0">' + pbtn(by.CONV1, col) + pbtn(by.CONV2, col) + '</div>';
     } else {
