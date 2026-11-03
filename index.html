@@ -23,6 +23,7 @@
         <button class="btn btn-primary btn-big" id="btn-resume">Resume Game</button>
       </div>
       <button class="btn btn-big" id="btn-newgame">New Game</button>
+      <button class="btn btn-big" id="btn-season">Season Mode</button>
       <button class="btn btn-ghost" id="btn-history-start">Game History</button>
       <button class="btn btn-ghost" id="btn-art-start">Custom Helmet Art</button>
     </div>
@@ -70,6 +71,46 @@
         <ol id="history-list" class="history-list"></ol>
         <button class="btn btn-ghost btn-small" id="btn-clear-history" hidden>Clear history</button>
       </div>
+    </div>
+  </section>
+
+  <!-- SEASON SETUP -->
+  <section id="screen-season-setup" class="screen" hidden>
+    <div class="setup">
+      <div class="setup-head">
+        <button class="btn btn-ghost btn-small" id="btn-ss-back" aria-label="Back">‹ Back</button>
+        <h2>New Season</h2>
+      </div>
+      <p class="ss-intro">18 games over 21 weeks, then the playoffs and the Grey Cup. You coach one team; the computer plays every other game with the same dice.</p>
+      <fieldset class="setup-block">
+        <legend>Pick your team</legend>
+        <div class="div-label">West Division</div>
+        <div class="team-grid" id="ss-grid-west"></div>
+        <div class="div-label">East Division</div>
+        <div class="team-grid" id="ss-grid-east"></div>
+      </fieldset>
+      <p class="setup-error" id="ss-warn" role="alert"></p>
+      <button class="btn btn-primary btn-big" id="btn-ss-start">Start Season</button>
+    </div>
+  </section>
+
+  <!-- SEASON HUB -->
+  <section id="screen-season" class="screen" hidden>
+    <div class="hub">
+      <div class="setup-head hub-head">
+        <button class="btn btn-ghost btn-small" id="btn-hub-back" aria-label="Main menu">‹ Menu</button>
+        <h2 id="hub-title">Season</h2>
+      </div>
+      <div class="hub-team" id="hub-team"></div>
+      <div class="hub-next" id="hub-next"></div>
+      <div class="tabs hub-tabs" role="tablist" id="hub-tabs">
+        <button class="tab active" data-htab="standings" role="tab">Standings</button>
+        <button class="tab" data-htab="schedule" role="tab">Schedule</button>
+        <button class="tab" data-htab="results" role="tab">Scores</button>
+        <button class="tab" data-htab="playoffs" role="tab">Playoffs</button>
+        <button class="tab" data-htab="stats" role="tab">Stats</button>
+      </div>
+      <div class="hub-body" id="hub-body"></div>
     </div>
   </section>
 
@@ -155,6 +196,15 @@
     </div>
   </div>
 
+  <div class="overlay" id="ov-week" hidden>
+    <div class="modal modal-wide">
+      <h2 id="week-title">Week results</h2>
+      <p class="week-note" id="week-note"></p>
+      <div id="week-body"></div>
+      <button class="btn btn-primary btn-big" id="btn-week-go">Continue</button>
+    </div>
+  </div>
+
   <div class="overlay" id="ov-box" hidden>
     <div class="modal modal-wide">
       <h2 id="box-title">Final</h2>
@@ -163,6 +213,7 @@
         <button class="btn btn-primary btn-big" id="btn-again">Play Again</button>
         <button class="btn btn-big" id="btn-box-new">New Game</button>
       </div>
+      <button class="btn btn-primary btn-big" id="btn-box-season" hidden>Back to Season</button>
       <button class="btn btn-ghost btn-small" id="btn-box-close">View field &amp; log</button>
     </div>
   </div>
@@ -171,6 +222,7 @@
 <script src="js/teams.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/season.js"></script>
 <!-- Built-in helmet logos (optional: the game falls back to drawn emblems if this file is missing). -->
 <script src="js/logos.js"></script>
 <script src="js/ui.js"></script>

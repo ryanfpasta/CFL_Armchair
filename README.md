@@ -13,7 +13,8 @@ A web emulation of the 1985 Canadian Armchair Football dice game. It is plain HT
 - `js/teams.js`: the 9 teams, their colours, and a helmet drawn in code with an original emblem for each nickname (lion, horse, elk antlers, wheat, bomber, tiger stripes, lark, split shield, sailing ship). These are new designs, not CFL or team trademarks.
 - `js/engine.js`: the rules (dice tables, downs, scoring, kicking, clock, overtime, stats). It has no DOM code.
 - `js/ai.js`: computer play calling
-- `js/ui.js`: rendering, dice animation, pass-and-play hand-over, localStorage save/resume/history
+- `js/season.js`: season mode rules (schedule, standings, tiebreakers, crossover, playoffs, Grey Cup). It has no DOM code.
+- `js/ui.js`: rendering, dice animation, pass-and-play hand-over, season screens, localStorage save/resume/history
 - `tests/`: acceptance tests
 
 ## Tests
@@ -21,8 +22,19 @@ A web emulation of the 1985 Canadian Armchair Football dice game. It is plain HT
 node tests/engine.test.js      # rules + computer opponent, scripted dice (88 checks)
 node tests/ui.test.js [outdir] # headless Chromium: full solo + pass-and-play games, save/resume, 6 device layouts
 node tests/art.test.js [outdir] # custom helmet art: upload, persist, remove
+node tests/season.test.js      # season logic: 200 schedules, standings, tiebreakers, crossover, 40 simulated seasons
+node tests/season-ui.test.js [outdir] # headless Chromium: a season from team pick to the Grey Cup
 ```
 Add `?fast=1` to the URL to skip animations (the browser tests use it).
+
+## Season mode
+Pick a team and play an 18-game season over 21 weeks, then the playoffs and the Grey Cup.
+- **Divisions:** West is BC, Calgary, Edmonton, Saskatchewan and Winnipeg. East is Hamilton, Montreal, Ottawa and Toronto.
+- **Schedule:** every team plays every other team home and away (16 games), plus one more home and one more away game against division rivals. With nine teams, each team has three bye weeks. No team meets the same opponent in back-to-back weeks.
+- **Each week:** play your game, or sim it. Every other game is a full computer-vs-computer game with the same dice tables and play calling.
+- **Standings:** 2 points for a win. Ties in the standings go to wins, then head-to-head points, head-to-head point differential, division-game differential, overall differential, and finally a coin flip.
+- **Playoffs:** top three in each division. 2nd hosts 3rd in the semi-final, and 1st has a bye and hosts the final. **Crossover:** if the 4th-place team in one division has more points than the 3rd-place team in the other (a tie is not enough), it takes that spot in the other division's bracket. The Grey Cup is at a neutral site that changes each season.
+- **Saving:** the season saves in the browser after every play, separately from single games, so a single game never overwrites it.
 
 ## Interpretations of the brief
 These are places where the brief left room, and the build makes a deliberate choice:

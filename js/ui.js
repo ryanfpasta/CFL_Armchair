@@ -1,7 +1,8 @@
 /* CFL Armchair Football — user interface. */
 (function () {
   'use strict';
-  var E = CFL.Engine, AI = CFL.AI, T = CFL.Teams;
+  var E = CFL.Engine, AI = CFL.AI, T = CFL.Teams, S = CFL.Season;
+  var KEY_SEASON = 'cflArmchair.season';
   var KEY_CUR = 'cflArmchair.current', KEY_HIST = 'cflArmchair.history', KEY_PREF = 'cflArmchair.prefs', KEY_ART = 'cflArmchair.helmetArt';
   var FAST = /[?&]fast=1/.test(location.search);
   var DICE_MS = FAST ? 0 : 600;
@@ -11,6 +12,7 @@
   var cpuTimer = null;
   var prefs = loadJSON(KEY_PREF) || { mute: false, speed: 'normal' };
   var setupSel = { t1: null, t2: null };
+  var season = null;     // current season (season mode), saved under KEY_SEASON
 
   function $(id) { return document.getElementById(id); }
   function show(id, on) { $(id).hidden = !on; }
@@ -20,7 +22,12 @@
   function loadJSON(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
   function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
   function removeKey(k) { try { localStorage.removeItem(k); } catch (e) { } }
-  function saveGame() { if (s && s.phase !== 'final') saveJSON(KEY_CUR, s); }
+  function saveGame() {
+    if (!s || s.phase === 'final') return;
+    if (s.seasonGame) { if (season && season.id === s.seasonGame.season) { season.live = s; saveSeason(); } }
+    else saveJSON(KEY_CUR, s);
+  }
+  function saveSeason() { if (season) saveJSON(KEY_SEASON, season); }
   function history() { return loadJSON(KEY_HIST) || []; }
 
   /* ---------- sound & haptics ---------- */
@@ -52,7 +59,7 @@
 
   /* ---------- screens ---------- */
   function screen(name) {
-    ['start', 'setup', 'game'].forEach(function (n) { show('screen-' + n, n === name); });
+    ['start', 'setup', 'game', 'season-setup', 'season'].forEach(function (n) { show('screen-' + n, n === name); });
     window.scrollTo(0, 0);
   }
 
@@ -69,6 +76,8 @@
       show('resume-box', false);
       $('btn-newgame').classList.add('btn-primary');
     }
+    var sv = loadSeason();
+    $('btn-season').textContent = sv ? 'Continue Season · ' + seasonWhen(sv) : 'Season Mode';
     screen('start');
   }
 
@@ -101,7 +110,7 @@
     $('history-list').innerHTML = h.length ? h.slice().reverse().map(function (g) {
       var d = new Date(g.date);
       return '<li><span>' + esc(g.home) + ' ' + g.score[0] + ' – ' + esc(g.away) + ' ' + g.score[1] + (g.ot ? ' (OT)' : '') +
-        ' <small>' + (g.mode === 'pnp' ? 'P&amp;P' : 'Solo') + '</small></span><span class="hdate">' +
+        ' <small>' + (g.mode === 'pnp' ? 'P&amp;P' : g.mode === 'season' ? 'Season' : 'Solo') + '</small></span><span class="hdate">' +
         d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + '</span></li>';
     }).join('') : '<li class="history-empty">No completed games yet.</li>';
     show('btn-clear-history', h.length > 0);
@@ -445,9 +454,9 @@
     if (!s.savedToHistory) {
       s.savedToHistory = true;
       var h = history();
-      h.push({ id: s.id, date: new Date().toISOString(), home: s.teams[0], away: s.teams[1], score: s.score.slice(), ot: !!s.ot, mode: s.mode });
+      h.push({ id: s.id, date: new Date().toISOString(), home: s.teams[0], away: s.teams[1], score: s.score.slice(), ot: !!s.ot, mode: s.seasonGame ? 'season' : s.mode });
       saveJSON(KEY_HIST, h.slice(-100));
-      removeKey(KEY_CUR);
+      if (s.seasonGame) recordSeasonGame(s); else removeKey(KEY_CUR);
       soundWhistle();
     }
     setTimeout(showBox, FAST ? 0 : 900);
@@ -457,6 +466,9 @@
     $('box-title').textContent = 'Final' + (s.ot ? ' (OT)' : '') + ': ' + team(0).id + ' ' + s.score[0] + ', ' + team(1).id + ' ' + s.score[1];
     $('box-body').innerHTML = '<div class="box-line">' + T.helmetSVG(team(w === null ? 0 : w).id, 64) +
       '<div><b>' + (w === null ? 'Tie game' : team(w).city + ' ' + team(w).name + ' win!') + '</b></div></div>' + statsHTML();
+    var inSeason = !!s.seasonGame;
+    $('btn-again').parentNode.hidden = inSeason;
+    show('btn-box-season', inSeason);
     show('ov-box', true);
   }
 
@@ -495,7 +507,11 @@
     $('btn-menu-close').onclick = function () { show('ov-menu', false); next(); };
     $('btn-mute').onclick = function () { prefs.mute = !prefs.mute; saveJSON(KEY_PREF, prefs); syncMenu(); };
     $('btn-speed').onclick = function () { prefs.speed = prefs.speed === 'fast' ? 'normal' : 'fast'; saveJSON(KEY_PREF, prefs); syncMenu(); };
-    $('btn-quit').onclick = function () { clearTimeout(cpuTimer); saveGame(); show('ov-menu', false); s = null; renderStart(); };
+    $('btn-quit').onclick = function () {
+      clearTimeout(cpuTimer); saveGame(); show('ov-menu', false);
+      var inSeason = s && s.seasonGame; s = null;
+      if (inSeason) renderHub(); else renderStart();
+    };
     $('btn-again').onclick = function () {
       var o = s; show('ov-box', false);
       beginGame(E.newGame({ home: o.teams[0], away: o.teams[1], mode: o.mode, ctrl: o.ctrl.slice() }));
@@ -567,6 +583,7 @@
       syncSetup();
     }
     if (s && !$('screen-game').hidden) { buildField(); renderAll(); }
+    if (!$('screen-season').hidden) renderHub();
   }
   function bindArt() {
     $('btn-art-start').onclick = openArt;
@@ -598,12 +615,341 @@
     });
   }
 
+  /* ---------- season mode ---------- */
+  var hubTab = 'standings', scoresWeek = null, ssPick = null, simEndArmed = false;
+  function loadSeason() {
+    var v = loadJSON(KEY_SEASON);
+    return v && v.kind === 'season' && v.v === 1 && T.byId[v.team] ? v : null;
+  }
+  function tname(id) { var t = T.byId[id]; return t ? t.city + ' ' + t.name : id; }
+  function myRow(sv) {
+    var st = S.standings(sv), r = st.West.concat(st.East).filter(function (x) { return x.id === sv.team; })[0];
+    return r;
+  }
+  function wl(r) { return r.w + '–' + r.l + (r.t ? '–' + r.t : ''); }
+  function seasonWhen(sv) {
+    if (sv.phase === 'done') return 'Season ' + sv.year + ' complete';
+    if (sv.phase === 'playoffs') return sv.playoffs.rounds[sv.playoffs.rounds.length - 1].name;
+    return 'Week ' + sv.week + ' · ' + wl(myRow(sv));
+  }
+  function mini(id, size) { return T.helmetSVG(id, size || 26); }
+
+  /* Season setup: pick a team. */
+  function renderSeasonSetup() {
+    ssPick = ssPick || (season && season.team) || null;
+    function btn(t) {
+      return '<button type="button" class="team-btn" data-ss="' + t.id + '" aria-pressed="' + (ssPick === t.id) + '">' +
+        T.helmetSVG(t.id, 44) + '<span class="tname">' + esc(t.name) + '</span><span class="tcity">' + esc(t.city) + '</span></button>';
+    }
+    $('ss-grid-west').innerHTML = S.DIVISIONS.West.map(function (id) { return btn(T.byId[id]); }).join('');
+    $('ss-grid-east').innerHTML = S.DIVISIONS.East.map(function (id) { return btn(T.byId[id]); }).join('');
+    var existing = loadSeason();
+    $('ss-warn').textContent = existing && existing.phase !== 'done' ? 'Starting a new season replaces your current one (' + tname(existing.team) + ', ' + seasonWhen(existing) + ').' : '';
+    screen('season-setup');
+  }
+  function startSeason(team, year) {
+    season = S.newSeason({ team: team, year: year || 1 });
+    hubTab = 'standings'; scoresWeek = null;
+    saveSeason();
+    renderHub();
+  }
+
+  /* ---------- hub ---------- */
+  function renderHub() {
+    season = season || loadSeason();
+    if (!season) return renderSeasonSetup();
+    simEndArmed = false;
+    var sv = season, me = sv.team, r = myRow(sv), status = S.teamStatus(sv, me);
+    var t = T.byId[me];
+    $('hub-title').textContent = 'Season ' + sv.year + ' · ' + (sv.phase === 'regular' ? 'Week ' + sv.week + ' of ' + S.WEEKS : sv.phase === 'playoffs' ? 'Playoffs' : 'Final');
+    $('hub-team').innerHTML = T.helmetSVG(me, 56) + '<div><div class="hub-tname">' + esc(t.city + ' ' + t.name) + '</div>' +
+      '<div class="hub-rec">' + wl(r) + ' · ' + r.pts + ' pts · ' + ordinal(r.place) + ' in the ' + r.div + '</div></div>';
+    $('hub-team').style.borderLeftColor = btnColour(t);
+    $('hub-next').innerHTML = nextCardHTML(sv, status);
+    renderHubTab();
+    screen('season');
+  }
+  function ordinal(n) { return n + (['th', 'st', 'nd', 'rd'][n] || 'th'); }
+  function matchupHTML(g, big) {
+    var sz = big ? 64 : 30;
+    function nm(id) { return big ? esc(T.byId[id].name) : id; }
+    return '<div class="mu">' +
+      '<div class="mu-team">' + T.helmetSVG(g.away, sz, false) + '<b>' + nm(g.away) + '</b></div>' +
+      '<div class="mu-at">' + (g.neutral ? 'vs' : 'at') + '</div>' +
+      '<div class="mu-team">' + T.helmetSVG(g.home, sz, true) + '<b>' + nm(g.home) + '</b></div></div>';
+  }
+  function nextCardHTML(sv, status) {
+    if (sv.phase === 'done') {
+      var champ = T.byId[sv.champion], gc = sv.playoffs.rounds[2].games[0];
+      return '<div class="next-card champ" style="--team:' + btnColour(champ) + '">' +
+        '<div class="next-label">Season ' + sv.year + ' Grey Cup Champions</div>' + T.helmetSVG(champ.id, 110) +
+        '<div class="champ-name">' + esc(champ.city + ' ' + champ.name) + '</div>' +
+        '<div class="next-sub">' + esc(gc.label) + ': ' + scoreLine(gc) + '</div>' +
+        (sv.champion === sv.team ? '<div class="champ-you">Your team won the Grey Cup!</div>' : '') +
+        '<button class="btn btn-primary btn-big" id="btn-next-season">Play Season ' + (sv.year + 1) + ' with the ' + esc(T.byId[sv.team].name) + '</button>' +
+        '<button class="btn" id="btn-new-season">New Season with Another Team</button></div>';
+    }
+    var label = sv.phase === 'regular' ? 'Week ' + sv.week : sv.playoffs.rounds[sv.playoffs.rounds.length - 1].name;
+    var mine = S.teamGame(sv, sv.team), html = '<div class="next-card">';
+    if (mine) {
+      html += '<div class="next-label">' + esc(label) + (mine.label ? ' · ' + esc(mine.label) : '') + '</div>' + matchupHTML(mine, true);
+      if (sv.live && sv.live.seasonGame && sv.live.seasonGame.game === mine.id) {
+        var L = sv.live;
+        html += '<div class="next-sub">In progress: ' + L.teams[0] + ' ' + L.score[0] + ', ' + L.teams[1] + ' ' + L.score[1] + ' · ' + E.qLabel(L.quarter) + '</div>' +
+          '<button class="btn btn-primary btn-big" id="btn-play">Resume Game</button>';
+      } else {
+        html += '<div class="next-actions"><button class="btn btn-primary btn-big" id="btn-play">Play Game</button>' +
+          '<button class="btn btn-big" id="btn-sim-mine">Sim My Game</button></div>';
+      }
+    } else if (playedMine(sv)) {
+      var pm = playedMine(sv);
+      html += '<div class="next-label">' + esc(label) + '</div>' + matchupHTML(pm, true) +
+        '<div class="next-sub">Final: ' + scoreLine(pm) + '</div>' +
+        '<button class="btn btn-primary btn-big" id="btn-sim-week">Finish ' + esc(label) + '</button>';
+    } else {
+      var why = sv.phase === 'regular' ? 'Bye week for the ' + esc(T.byId[sv.team].name) + '.' :
+        status === 'out' ? (wasInPlayoffs(sv) ? 'The ' + esc(T.byId[sv.team].name) + ' have been knocked out.' : 'The ' + esc(T.byId[sv.team].name) + ' missed the playoffs.') :
+        'The ' + esc(T.byId[sv.team].name) + ' have a bye as division leaders.';
+      html += '<div class="next-label">' + esc(label) + '</div><div class="next-sub">' + why + '</div>' +
+        '<div class="next-games">' + S.currentGames(sv).map(function (g) { return '<div class="ng">' + (g.label ? '<small>' + esc(g.label) + '</small>' : '') + matchupHTML(g, false) + '</div>'; }).join('') + '</div>' +
+        '<button class="btn btn-primary btn-big" id="btn-sim-week">' + (sv.phase === 'regular' ? 'Sim Week ' + sv.week : 'Sim ' + esc(label)) + '</button>';
+    }
+    if (sv.phase === 'regular' && !sv.live) html += '<button class="btn btn-ghost btn-small" id="btn-sim-end">Sim to end of regular season</button>';
+    return html + '</div>';
+  }
+  function playedMine(sv) {
+    return S.currentGames(sv).filter(function (g) { return g.result && (g.home === sv.team || g.away === sv.team); })[0] || null;
+  }
+  function wasInPlayoffs(sv) { var b = sv.playoffs.bracket; return b.West.indexOf(sv.team) >= 0 || b.East.indexOf(sv.team) >= 0; }
+  function scoreLine(g) {
+    var r = g.result; if (!r) return '';
+    return g.away + ' ' + r.score[1] + ', ' + g.home + ' ' + r.score[0] + (r.ot ? ' (OT)' : '');
+  }
+
+  function renderHubTab() {
+    Array.prototype.forEach.call(document.querySelectorAll('#hub-tabs .tab'), function (b) { b.classList.toggle('active', b.getAttribute('data-htab') === hubTab); });
+    var f = { standings: standingsHTML, schedule: scheduleHTML, results: scoresHTML, playoffs: playoffsHTML, stats: teamStatsHTML }[hubTab];
+    $('hub-body').innerHTML = f(season);
+  }
+  function standingsHTML(sv) {
+    var st = S.standings(sv), field = sv.playoffs ? { bracket: sv.playoffs.bracket, crossover: sv.playoffs.crossover } : S.playoffField(sv);
+    function table(d) {
+      return '<h3 class="div-h">' + d + ' Division</h3><table class="stats-table standings"><thead><tr><th>Team</th><th>GP</th><th>W</th><th>L</th><th>Pts</th><th>PF</th><th>PA</th><th class="hide-xs">Strk</th></tr></thead><tbody>' +
+        st[d].map(function (r, i) {
+          var inP = field.bracket.West.indexOf(r.id) >= 0 || field.bracket.East.indexOf(r.id) >= 0;
+          var cls = (r.id === sv.team ? 'me ' : '') + (i === 2 ? 'cut ' : '') + (inP ? 'in' : '');
+          var mark = field.crossover && field.crossover.team === r.id ? ' <span class="xo" title="Crossover">X</span>' : '';
+          return '<tr class="' + cls + '"><td><span class="st-team">' + mini(r.id, 24) + '<span>' + r.id + mark + '</span></span></td><td>' + r.gp + '</td><td>' + r.w + '</td><td>' + r.l +
+            '</td><td class="tot">' + r.pts + '</td><td>' + r.pf + '</td><td>' + r.pa + '</td><td class="hide-xs">' + r.streak + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    var note = '';
+    if (field.crossover) {
+      var c = field.crossover;
+      note = '<p class="hub-note">' + (sv.playoffs ? '' : 'If the season ended today: ') + esc(tname(c.team)) + ' (4th in the ' + c.from + ') ' +
+        (sv.playoffs ? 'crossed over' : 'would cross over') + ' to the ' + c.to + ' playoffs, taking the spot of ' + esc(tname(c.replaced)) + '.</p>';
+    }
+    return table('West') + table('East') + note +
+      '<p class="hub-note">Top three in each division make the playoffs (highlighted). 2 points for a win. Ties in the standings go to head-to-head record, then point differential.</p>';
+  }
+  function scheduleHTML(sv) {
+    var me = sv.team, rows = S.scheduleFor(sv, me).map(function (g) {
+      var cur = sv.phase === 'regular' && g.week === sv.week ? ' class="cur"' : '';
+      if (g.bye) return '<tr' + cur + '><td>' + g.week + '</td><td colspan="2" class="muted">Bye</td></tr>';
+      return '<tr' + cur + '><td>' + g.week + '</td><td><span class="st-team">' + (g.home === me ? 'vs ' : '@ ') + mini(g.home === me ? g.away : g.home, 22) +
+        '<span>' + esc(T.byId[g.home === me ? g.away : g.home].name) + '</span></span></td><td>' + myResult(g, me) + '</td></tr>';
+    });
+    if (sv.playoffs) sv.playoffs.rounds.forEach(function (r) {
+      r.games.forEach(function (g) {
+        if (g.home !== me && g.away !== me) return;
+        rows.push('<tr class="po"><td>' + esc(r.name === 'Grey Cup' ? 'GC' : r.name === 'Division Finals' ? 'Final' : 'Semi') + '</td><td><span class="st-team">' + (g.home === me ? 'vs ' : '@ ') +
+          mini(g.home === me ? g.away : g.home, 22) + '<span>' + esc(T.byId[g.home === me ? g.away : g.home].name) + '</span></span></td><td>' + myResult(g, me) + '</td></tr>');
+      });
+    });
+    return '<table class="stats-table sched"><thead><tr><th>Wk</th><th>Opponent</th><th>Result</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  }
+  function myResult(g, me) {
+    if (!g.result) return '<span class="muted">–</span>';
+    var i = g.home === me ? 0 : 1, a = g.result.score[i], b = g.result.score[1 - i];
+    return '<b class="' + (a > b ? 'win' : 'loss') + '">' + (a > b ? 'W' : a < b ? 'L' : 'T') + '</b> ' + a + '–' + b + (g.result.ot ? ' OT' : '');
+  }
+  function lastScoredWeek(sv) {
+    var w = 0; sv.weeks.forEach(function (wk, i) { if (wk.some(function (g) { return g.result; })) w = i + 1; });
+    return w;
+  }
+  function gameRowHTML(g) {
+    var r = g.result, me = season.team;
+    var hw = r.score[0] > r.score[1];
+    var detail = r.stats ? '<tr class="gdetail" hidden><td colspan="3"><table class="stats-table mini-box"><thead><tr><th></th><th>' + g.away + '</th><th>' + g.home + '</th></tr></thead><tbody>' +
+      [['Total yards', 'yds'], ['Passing', 'pass'], ['Rushing', 'rush'], ['First downs', 'fd'], ['Turnovers', 'to']].map(function (x) {
+        return '<tr><td>' + x[0] + '</td><td>' + r.stats[1][x[1]] + '</td><td>' + r.stats[0][x[1]] + '</td></tr>';
+      }).join('') + '</tbody></table></td></tr>' : '';
+    return '<tbody class="grow' + (g.home === me || g.away === me ? ' me' : '') + '"><tr class="gline" tabindex="0"><td class="g-team' + (!hw ? ' w' : '') + '">' + mini(g.away, 24) + '<span>' + g.away + '</span><b>' + r.score[1] + '</b></td>' +
+      '<td class="g-at">' + (g.neutral ? 'vs' : '@') + (r.ot ? '<small>OT</small>' : '') + (r.played ? '<small>played</small>' : '') + '</td>' +
+      '<td class="g-team' + (hw ? ' w' : '') + '"><b>' + r.score[0] + '</b><span>' + g.home + '</span>' + mini(g.home, 24) + '</td></tr>' + detail + '</tbody>';
+  }
+  function gamesTable(games) {
+    return '<table class="games">' + games.filter(function (g) { return g.result; }).map(gameRowHTML).join('') + '</table>';
+  }
+  function scoresHTML(sv) {
+    var last = lastScoredWeek(sv);
+    if (!last) return '<p class="hub-note">No games played yet.</p>';
+    var w = scoresWeek && scoresWeek <= last ? scoresWeek : last;
+    return '<div class="week-pick"><button class="btn btn-small" data-wk="' + (w - 1) + '"' + (w <= 1 ? ' disabled' : '') + '>‹</button><b>Week ' + w + '</b>' +
+      '<button class="btn btn-small" data-wk="' + (w + 1) + '"' + (w >= last ? ' disabled' : '') + '>›</button></div>' +
+      gamesTable(sv.weeks[w - 1]) +
+      '<p class="hub-note">Tap a game for its team stats.</p>';
+  }
+  function playoffsHTML(sv) {
+    var field = sv.playoffs ? { bracket: sv.playoffs.bracket, crossover: sv.playoffs.crossover } : S.playoffField(sv);
+    var pre = !sv.playoffs ? '<p class="hub-note">If the season ended today:</p>' : '';
+    function game(label, home, away, g) {
+      var res = g && g.result, wid = res ? S.winnerOf(g) : null;
+      function side(id, sc) {
+        if (!id) return '<div class="bk-team tbd">TBD</div>';
+        return '<div class="bk-team' + (wid === id ? ' w' : wid ? ' l' : '') + (id === sv.team ? ' me' : '') + '">' + mini(id, 22) + '<span>' + esc(T.byId[id].name) + '</span>' + (res ? '<b>' + sc + '</b>' : '') + '</div>';
+      }
+      return '<div class="bk-game"><div class="bk-label">' + esc(label) + '</div>' + side(away, res ? res.score[1] : '') + side(home, res ? res.score[0] : '') + '</div>';
+    }
+    function round(i, d) { return sv.playoffs && sv.playoffs.rounds[i] ? sv.playoffs.rounds[i].games.filter(function (g) { return g.div === d; })[0] : null; }
+    function division(d) {
+      var b = field.bracket[d], semi = round(0, d), fin = round(1, d);
+      return '<div class="bk-div"><h3 class="div-h">' + d + '</h3>' +
+        game('Semi-Final', b[1], b[2], semi) +
+        game('Final', b[0], fin ? fin.away : null, fin) + '</div>';
+    }
+    var gc = sv.playoffs && sv.playoffs.rounds[2] ? sv.playoffs.rounds[2].games[0] : null;
+    var xo = field.crossover ? '<p class="hub-note">Crossover: ' + esc(tname(field.crossover.team)) + ' plays in the ' + field.crossover.to + ' bracket.</p>' : '';
+    return pre + '<div class="bracket">' + division('West') + division('East') + '</div>' +
+      '<div class="bk-gc">' + game('Grey Cup at ' + sv.host, gc ? gc.home : null, gc ? gc.away : null, gc) + '</div>' + xo +
+      '<p class="hub-note">2nd hosts 3rd in the semi-finals; the 1st-place team has a bye and hosts the final. The Grey Cup is at a neutral site.</p>';
+  }
+  function teamStatsHTML(sv) {
+    var rows = S.teamStats(sv).filter(function (r) { return r.gp; });
+    if (!rows.length) return '<p class="hub-note">No games played yet.</p>';
+    function pg(x, r) { return (x / r.gp).toFixed(1); }
+    rows.sort(function (a, b) { return b.pf / b.gp - a.pf / a.gp; });
+    return '<table class="stats-table tstats"><thead><tr><th>Team</th><th>Pts/G</th><th>Yds/G</th><th>Pass/G</th><th>Rush/G</th><th>TO</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr' + (r.id === sv.team ? ' class="me"' : '') + '><td><span class="st-team">' + mini(r.id, 22) + '<span>' + r.id + '</span></span></td><td class="tot">' + pg(r.pf, r) + '</td><td>' + pg(r.yds, r) + '</td><td>' + pg(r.pass, r) + '</td><td>' + pg(r.rush, r) + '</td><td>' + r.to + '</td></tr>';
+      }).join('') + '</tbody></table><p class="hub-note">Regular season, per game. TO = turnovers (interceptions thrown + fumbles lost).</p>';
+  }
+
+  /* ---------- playing and simming ---------- */
+  function playSeasonGame() {
+    var g = S.teamGame(season, season.team);
+    if (!g) return;
+    if (season.live && season.live.seasonGame && season.live.seasonGame.game === g.id) {
+      s = season.live; s.uiLastActor = null; enterGame(); return;
+    }
+    var ctrl = g.home === season.team ? ['human', 'cpu'] : ['cpu', 'human'];
+    var st = E.newGame({ home: g.home, away: g.away, mode: 'solo', ctrl: ctrl });
+    st.seasonGame = { season: season.id, game: g.id, label: (g.label || 'Week ' + g.week) };
+    beginGame(st);
+    $('result').textContent = st.seasonGame.label + ': ' + tname(g.away) + (g.neutral ? ' vs ' : ' at ') + tname(g.home) + '.';
+  }
+  function recordSeasonGame(st) {
+    season = season || loadSeason();
+    if (!season || season.id !== st.seasonGame.season) return;
+    var g = S.findGame(season, st.seasonGame.game);
+    if (g && !g.result) S.record(season, g.id, S.resultFromGame(st));
+    season.live = null;
+    saveSeason();
+  }
+  /* Sim the rest of the current week/round, then show the results. */
+  function finishRound() {
+    var label = season.phase === 'regular' ? 'Week ' + season.week + ' Results' : season.playoffs.rounds[season.playoffs.rounds.length - 1].name;
+    S.simCurrent(season);
+    saveSeason();
+    var games = S.currentGames(season).slice();
+    $('week-title').textContent = label;
+    $('week-note').textContent = roundNote(games);
+    $('week-body').innerHTML = gamesTable(games);
+    show('ov-week', true);
+  }
+  function roundNote(games) {
+    var me = season.team, g = games.filter(function (x) { return x.home === me || x.away === me; })[0];
+    if (!g) return season.phase === 'regular' ? 'The ' + T.byId[me].name + ' had the week off.' : '';
+    var won = S.winnerOf(g) === me;
+    if (season.phase === 'playoffs') {
+      var name = season.playoffs.rounds[season.playoffs.rounds.length - 1].name;
+      if (name === 'Grey Cup') return won ? 'The ' + T.byId[me].name + ' win the Grey Cup!' : 'The ' + T.byId[me].name + ' fall in the Grey Cup.';
+      return won ? 'The ' + T.byId[me].name + ' advance!' : 'The ' + T.byId[me].name + ' are eliminated.';
+    }
+    return (won ? 'Win' : 'Loss') + ' for the ' + T.byId[me].name + '.';
+  }
+  function continueRound() {
+    show('ov-week', false);
+    var wasRegular = season.phase === 'regular';
+    S.advance(season);
+    saveSeason();
+    if (wasRegular && season.phase === 'playoffs') hubTab = 'playoffs';
+    if (season.phase === 'done') hubTab = 'playoffs';
+    scoresWeek = null;
+    renderHub();
+  }
+  function simToEnd() {
+    while (season.phase === 'regular') { S.simCurrent(season); S.advance(season); }
+    season.live = null;
+    saveSeason();
+    hubTab = 'playoffs';
+    renderHub();
+  }
+
+  function bindSeason() {
+    $('btn-season').onclick = function () { season = loadSeason(); if (season) renderHub(); else renderSeasonSetup(); };
+    $('btn-ss-back').onclick = function () { if (loadSeason()) { season = loadSeason(); renderHub(); } else renderStart(); };
+    $('screen-season-setup').addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-ss]'); if (!b) return;
+      ssPick = b.getAttribute('data-ss');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-ss]'), function (x) { x.setAttribute('aria-pressed', x.getAttribute('data-ss') === ssPick ? 'true' : 'false'); });
+    });
+    $('btn-ss-start').onclick = function () {
+      if (!ssPick) { $('ss-warn').textContent = 'Pick a team.'; return; }
+      startSeason(ssPick, 1);
+    };
+    $('btn-hub-back').onclick = function () { s = null; renderStart(); };
+    $('hub-tabs').addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-htab]'); if (!b) return;
+      hubTab = b.getAttribute('data-htab'); renderHubTab();
+    });
+    $('hub-body').addEventListener('click', function (ev) {
+      var w = ev.target.closest('[data-wk]');
+      if (w && !w.disabled) { scoresWeek = +w.getAttribute('data-wk'); renderHubTab(); return; }
+      toggleDetail(ev);
+    });
+    $('week-body').addEventListener('click', toggleDetail);
+    $('hub-next').addEventListener('click', function (ev) {
+      var b = ev.target.closest('button'); if (!b) return;
+      if (b.id === 'btn-play') playSeasonGame();
+      else if (b.id === 'btn-sim-mine' || b.id === 'btn-sim-week') finishRound();
+      else if (b.id === 'btn-sim-end') {
+        if (!simEndArmed) { simEndArmed = true; b.textContent = 'Tap again to sim every remaining regular-season game'; b.classList.add('armed'); return; }
+        simToEnd();
+      }
+      else if (b.id === 'btn-next-season') startSeason(season.team, season.year + 1);
+      else if (b.id === 'btn-new-season') { ssPick = null; renderSeasonSetup(); }
+    });
+    $('btn-week-go').onclick = continueRound;
+    $('btn-box-season').onclick = function () {
+      show('ov-box', false);
+      s = null;
+      renderHub();
+      if (season && season.phase !== 'done') finishRound();
+    };
+  }
+  function toggleDetail(ev) {
+    var row = ev.target.closest('.gline'); if (!row) return;
+    var d = row.parentNode.querySelector('.gdetail'); if (d) d.hidden = !d.hidden;
+  }
+
   // Test hook: read-only access to the current state.
-  window.CFL.ui = { state: function () { return s; }, busy: function () { return busy; } };
+  window.CFL.ui = { state: function () { return s; }, busy: function () { return busy; }, season: function () { return season; } };
 
   storedArt = loadJSON(KEY_ART) || {};
   T.setCustomArt(effectiveArt());
   bind();
   bindArt();
+  bindSeason();
   renderStart();
 })();
