@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+# Personal team logos: never commit
+js/logos.js
+logos/

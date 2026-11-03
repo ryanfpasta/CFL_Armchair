@@ -1,0 +1,33 @@
+/* Custom helmet art: upload, persist across reload, render in game, remove. */
+const { chromium } = require('playwright'); const path = require('path');
+const URL = 'file://' + path.resolve(__dirname, '..', 'index.html') + '?fast=1';
+let pass = 0, fail = 0; const ok = (c, n) => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n); };
+(async () => {
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto(URL);
+  await page.click('#btn-art-start');
+  await page.setInputFiles('[data-file=BC]', path.join(__dirname, 'test-decal.png'));
+  await page.waitForSelector('[data-remove=BC]');
+  await page.setInputFiles('[data-file=CGY]', path.join(__dirname, 'test-decal.png'));
+  await page.waitForSelector('[data-mode=CGY]');
+  await page.selectOption('[data-mode=CGY]', 'full');
+  await page.screenshot({ path: process.argv[2] + '/art-settings.png' });
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('cflArmchair.helmetArt')));
+  ok(stored.BC && stored.BC.mode === 'decal' && /^data:image\/png/.test(stored.BC.src), 'BC image stored as PNG decal');
+  ok(stored.CGY.mode === 'full', 'CGY set to whole-helmet mode');
+  ok(stored.BC.src.length < 200000, 'image downscaled (' + Math.round(stored.BC.src.length / 1024) + ' KB)');
+  await page.click('#btn-art-close');
+  await page.reload();
+  await page.click('#btn-newgame'); await page.click('#grid-team1 [data-team=BC]'); await page.click('#grid-team2 [data-team=CGY]');
+  ok(await page.$$eval('#grid-team1 [data-team=BC] image', l => l.length) === 1, 'custom art survives reload and shows on setup screen');
+  await page.click('#btn-start'); await page.click('#coin-actions [data-call=H]'); await page.click('#btn-coin-go');
+  ok(await page.$$eval('#sb-home image, #sb-away image', l => l.length) === 2, 'custom art shows on the scoreboard');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: process.argv[2] + '/art-game.png' });
+  await page.click('#btn-menu'); await page.click('#btn-art-menu'); await page.click('[data-remove=BC]');
+  await page.click('#btn-art-close');
+  ok(await page.$$eval('#sb-home image, #sb-away image', l => l.length) === 1, 'removing BC art restores the drawn emblem');
+  ok(errs.length === 0, 'no page errors ' + errs.join(';'));
+  console.log(`\n${pass} passed, ${fail} failed`); await b.close(); process.exit(fail ? 1 : 0);
+})();

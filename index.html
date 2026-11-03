@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1d33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>CFL Armchair Football</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- START -->
+  <section id="screen-start" class="screen">
+    <div class="start-card">
+      <div class="start-helmets" id="start-helmets"></div>
+      <h1>Armchair Football</h1>
+      <p class="tagline">The Canadian dice game. Call the play, roll the dice, 110 yards to glory.</p>
+      <div id="resume-box" class="resume-box" hidden>
+        <div id="resume-summary" class="resume-summary"></div>
+        <button class="btn btn-primary btn-big" id="btn-resume">Resume Game</button>
+      </div>
+      <button class="btn btn-big" id="btn-newgame">New Game</button>
+      <button class="btn btn-ghost" id="btn-history-start">Game History</button>
+      <button class="btn btn-ghost" id="btn-art-start">Custom Helmet Art</button>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="screen-setup" class="screen" hidden>
+    <div class="setup">
+      <div class="setup-head">
+        <button class="btn btn-ghost btn-small" id="btn-setup-back" aria-label="Back">‹ Back</button>
+        <h2>New Game</h2>
+      </div>
+
+      <fieldset class="setup-block">
+        <legend>Mode</legend>
+        <div class="seg" role="radiogroup" id="mode-seg">
+          <label><input type="radio" name="mode" value="solo" checked><span>Solo vs Computer</span></label>
+          <label><input type="radio" name="mode" value="pnp"><span>Pass &amp; Play (2 players)</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="setup-block">
+        <legend id="lbl-team1">Your team</legend>
+        <div class="team-grid" id="grid-team1"></div>
+      </fieldset>
+
+      <fieldset class="setup-block">
+        <legend id="lbl-team2">Opponent</legend>
+        <div class="team-grid" id="grid-team2"></div>
+      </fieldset>
+
+      <fieldset class="setup-block">
+        <legend>Home team</legend>
+        <div class="seg" role="radiogroup" id="home-seg">
+          <label><input type="radio" name="home" value="1" checked><span id="home-opt1">Your team</span></label>
+          <label><input type="radio" name="home" value="2"><span id="home-opt2">Opponent</span></label>
+        </div>
+      </fieldset>
+
+      <p class="setup-error" id="setup-error" role="alert"></p>
+      <button class="btn btn-primary btn-big" id="btn-start">Start Game</button>
+
+      <div class="history" id="history-box">
+        <h3>Game History</h3>
+        <ol id="history-list" class="history-list"></ol>
+        <button class="btn btn-ghost btn-small" id="btn-clear-history" hidden>Clear history</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen" hidden>
+    <header class="scoreboard" id="scoreboard">
+      <div class="sb-team" id="sb-home"></div>
+      <div class="sb-mid">
+        <div class="sb-clock"><span id="sb-q">Q1</span> <span id="sb-clock">15:00</span></div>
+        <div class="sb-dd" id="sb-dd">Kickoff</div>
+      </div>
+      <div class="sb-team sb-away" id="sb-away"></div>
+      <button class="sb-menu" id="btn-menu" aria-label="Menu">☰</button>
+    </header>
+    <div class="sb-ball" id="sb-ball"></div>
+
+    <main class="game-grid">
+      <div class="field-wrap" id="field-wrap">
+        <svg id="field" viewBox="0 0 65 150" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Football field"></svg>
+      </div>
+
+      <div class="dice-pane">
+        <div class="dice-label" id="dice-label">&nbsp;</div>
+        <div class="dice" id="dice">
+          <div class="die" id="die1"></div>
+          <div class="die" id="die2"></div>
+        </div>
+        <div class="dice-sum" id="dice-sum">&nbsp;</div>
+        <div class="result" id="result" aria-live="polite">Welcome to Armchair Football.</div>
+        <div class="toast" id="toast" hidden></div>
+      </div>
+
+      <div class="buttons-pane" id="buttons-pane"></div>
+
+      <aside class="info-pane">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="stats" role="tab">Stats Pad</button>
+          <button class="tab" data-tab="log" role="tab">Play-by-Play</button>
+        </div>
+        <div class="tab-body" id="tab-stats"></div>
+        <div class="tab-body" id="tab-log" hidden><ol class="log" id="log"></ol></div>
+      </aside>
+    </main>
+  </section>
+
+  <!-- OVERLAYS -->
+  <div class="overlay" id="ov-coin" hidden>
+    <div class="modal">
+      <h2>Coin Toss</h2>
+      <div class="coin" id="coin">CFL</div>
+      <p id="coin-text"></p>
+      <div class="modal-actions" id="coin-actions"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-handover" hidden>
+    <div class="modal handover">
+      <div id="handover-helmet"></div>
+      <h2 id="handover-title">Pass the device</h2>
+      <p id="handover-text"></p>
+      <button class="btn btn-primary btn-big" id="btn-handover">Ready</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-menu" hidden>
+    <div class="modal">
+      <h2>Menu</h2>
+      <button class="btn btn-big" id="btn-mute">Sound: On</button>
+      <button class="btn btn-big" id="btn-speed">CPU speed: Normal</button>
+      <button class="btn btn-big" id="btn-art-menu">Custom Helmet Art</button>
+      <button class="btn btn-big" id="btn-quit">Save &amp; Exit to Menu</button>
+      <button class="btn btn-ghost" id="btn-menu-close">Back to game</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-art" hidden>
+    <div class="modal modal-wide">
+      <h2>Custom Helmet Art</h2>
+      <p class="art-help">Load your own image for any team, such as a logo you've saved to this device. PNG with a transparent background looks best. <b>On helmet</b> puts it on the side of the helmet. <b>Whole helmet</b> uses your picture in place of the drawn helmet. Images are stored only in this browser.</p>
+      <div id="art-list" class="art-list"></div>
+      <p class="setup-error" id="art-error" role="alert"></p>
+      <button class="btn btn-primary btn-big" id="btn-art-close">Done</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-box" hidden>
+    <div class="modal modal-wide">
+      <h2 id="box-title">Final</h2>
+      <div id="box-body"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary btn-big" id="btn-again">Play Again</button>
+        <button class="btn btn-big" id="btn-box-new">New Game</button>
+      </div>
+      <button class="btn btn-ghost btn-small" id="btn-box-close">View field &amp; log</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/teams.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<!-- Optional, personal copies only: built-in helmet logos. Not in the public repo. -->
+<script src="js/logos.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
