@@ -176,6 +176,9 @@ button { font: inherit; color: inherit; }
 .prow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .prow .pbtn { margin: 0; background: var(--panel-2); color: var(--text); }
 .prow .pbtn:disabled { background: #2a3442; color: #7d8a99; }
+.prow.trick { background: var(--panel); border-radius: var(--radius); padding: 6px; }
+.prow.trick h4 { grid-column: 1 / -1; margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--accent); text-align: center; }
+.prow.trick .pbtn:not(:disabled) { box-shadow: inset 0 0 0 2px var(--accent); }
 .single-action { display: grid; gap: 8px; }
 .single-action .pbtn { min-height: 64px; font-size: 19px; }
 .waiting { text-align: center; color: var(--muted); padding: 18px 8px; background: var(--panel); border-radius: var(--radius); font-weight: 600; }

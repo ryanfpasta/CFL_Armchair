@@ -14,6 +14,11 @@
       { to: 'int' }, { sack: 6 }, { inc: 1 }, { y: 3 }, { y: 5 }, { y: 6 }, { y: 7 }, { y: 8 }, { y: 10 }, { y: 12 }, { y: 20 }] },
     LP: { name: 'Long Pass', kind: 'pass', table: [
       { to: 'int' }, { to: 'int' }, { sack: 8 }, { inc: 1 }, { inc: 1 }, { y: 12 }, { y: 18 }, { y: 25 }, { y: 32 }, { y: 40 }, { y: 55 }] },
+    /* Trick plays, 3rd down only. The punter runs, or the holder throws. Fools the defence on 8+ (5 in 12). */
+    FAKE_PUNT: { name: 'Fake Punt', kind: 'run', fake: 1, table: [
+      { to: 'fumble' }, { y: -3 }, { y: -1 }, { y: 0 }, { y: 1 }, { y: 2 }, { y: 12 }, { y: 15 }, { y: 20 }, { y: 30, bk: 1 }, { y: 110, bk: 1 }] },
+    FAKE_FG: { name: 'Fake Field Goal', kind: 'pass', fake: 1, table: [
+      { to: 'int' }, { sack: 4 }, { sack: 2 }, { inc: 1 }, { inc: 1 }, { inc: 1 }, { y: 10 }, { y: 14 }, { y: 18 }, { y: 25 }, { y: 110 }] },
     KNEEL: { name: 'Kneel Down', kind: 'run' }
   };
   var KICKOFF = ['fumble', 25, 30, 35, 35, 35, 40, 45, 50, 55, 'td'];
@@ -207,6 +212,11 @@
       var d = fgDistance(s);
       A.push({ id: 'FG', label: 'Field Goal', enabled: d <= 60,
         reason: d <= 60 ? d + ' yds, good on ' + fgNeed(d) + '+' : 'Out of range (' + d + ' yds)' });
+      var third = s.down === 3;
+      A.push({ id: 'FAKE_PUNT', label: 'Fake Punt', enabled: third && !s.ot,
+        reason: s.ot ? 'No punts in overtime' : third ? 'Fools them on 8+' : '3rd down only' });
+      A.push({ id: 'FAKE_FG', label: 'Fake Field Goal', enabled: third && d <= 60,
+        reason: !third ? '3rd down only' : d <= 60 ? 'Fools them on 8+' : 'Out of field-goal range' });
       A.push({ id: 'KNEEL', label: 'Kneel Down', enabled: true, reason: '−1 yd, 40 sec' });
       var toReason = '';
       if (s.quarter > 4) toReason = 'No clock in overtime';
@@ -262,7 +272,7 @@
 
     if (o.to) {
       if (o.to === 'int') { st.ints++; head = P.name + ' intercepted!'; logHead = P.name + ' intercepted'; }
-      else { st.fumbles++; head = P.name + ' — fumble, lost!'; logHead = P.name + ', fumble lost'; }
+      else { st.fumbles++; head = P.name + (P.fake ? ' — the punter fumbles, lost!' : ' — fumble, lost!'); logHead = P.name + ', fumble lost'; }
       if (third) st.third[1]++;
       r.yards = 0;
       s.playYards[off].push(0);
@@ -317,6 +327,7 @@
       }
       burn(s, r, P.kind === 'run' ? TIME.run : TIME.complete, true, off);
     }
+    if (P.fake && credited >= 10) { head = 'FAKE! They bought it — ' + head; logHead = 'FAKE! ' + logHead; }
     var signed = (credited > 0 ? '+' : '') + credited + ' yard' + (Math.abs(credited) === 1 ? '' : 's');
 
     if (td) {

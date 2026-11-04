@@ -40,6 +40,13 @@ Pick a team and play an 18-game season over 21 weeks, then the playoffs and the 
 ## Onside kick
 An onside kick is available on any kickoff in the last 3 minutes of the 2nd or 4th quarter. The kicking team recovers it on 2d6 of 11 or more (1 in 12) and gets the ball at its own 45. Otherwise the receiving team takes over at the kicking team's 45. The computer tries an onside kick when it's trailing in the 4th quarter with 2 minutes or less left, or when it's down by more than 8 with 3 minutes or less left.
 
+## Fake punt and fake field goal
+Trick plays for 3rd down, under **Trick play** below the play buttons. Big risk, big reward: they fool the defence on 2d6 of 8 or more (5 in 12).
+- **Fake Punt** (the punter runs, any 3rd down except in overtime): 2 fumble, lost at the line · 3 −3 · 4 −1 · 5 no gain · 6 +1 · 7 +2 · 8 +12 · 9 +15 · 10 +20 · 11 +30 · 12 TOUCHDOWN.
+- **Fake Field Goal** (the holder throws, 3rd down in field-goal range): 2 intercepted · 3 sacked −4 · 4 sacked −2 · 5–7 incomplete · 8 +10 · 9 +14 · 10 +18 · 11 +25 · 12 TOUCHDOWN.
+- If it comes up short of the first down, it's a turnover on downs at the spot, so a failed fake punt hands the other team great field position, and a failed fake field goal gives up the points.
+- The computer fakes a punt when it's down by more than 8 in the last 3 minutes (on 3rd and 12 or less), and a fake field goal 30% of the time when it's down by more than 3 late in range. It also tries the odd surprise: about 6% of the time on 3rd and 4 or less between its own 45 and your 35 (never protecting a 4th-quarter lead), and 5% of the time on 3rd and 3 or less in field-goal range before the last 3 minutes.
+
 ## Interpretations of the brief
 These are places where the brief left room, and the build makes a deliberate choice:
 1. **Stopped clock.** The listed per-play times are treated as running-clock times, since they include the huddle. When the clock is stopped before the snap (after a timeout, or anywhere in the last 3 minutes of a half), a run, completion or sack burns 10 s instead of 35 s or 30 s. Kneel always burns 40 s. Without this rule, timeouts and "clock stops after every play" would do nothing.

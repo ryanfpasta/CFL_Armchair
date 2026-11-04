@@ -137,7 +137,7 @@ section('Stats (random full games)');
     while (s.phase !== 'final') {
       const pre = { down: s.down, poss: s.poss, phase: s.phase };
       const id = AI.decide(s).id; const r = E.act(s, id);
-      if (pre.phase === 'play' && pre.down === 3 && ['SR', 'LR', 'SP', 'LP', 'KNEEL'].includes(id)) {
+      if (pre.phase === 'play' && pre.down === 3 && ['SR', 'LR', 'SP', 'LP', 'KNEEL', 'FAKE_PUNT', 'FAKE_FG'].includes(id)) {
         thirdAtt[pre.poss]++; if (/1st down|TOUCHDOWN/.test(r.logText) && !/fumble|intercept/i.test(r.logText)) thirdMade[pre.poss]++;
       }
       if (/^Sacked/.test(r.logText)) sacks[pre.poss]++;
@@ -155,6 +155,32 @@ section('Stats (random full games)');
     }
   }
   eq(bad, 0, games + ' games: total yards = sum of play yards; 3rd downs, sacks, INTs, points by quarter all reconcile');
+}
+
+section('Fake punt and fake field goal');
+{ const has = (st, id) => E.availableActions(st).find(x => x.id === id).enabled;
+  ok(!has(game({ down: 2 }), 'FAKE_PUNT') && !has(game({ down: 2, ballOn: 80, ltg: 90 }), 'FAKE_FG'), 'fakes are 3rd down only');
+  ok(has(game({ down: 3 }), 'FAKE_PUNT'), 'fake punt on 3rd down');
+  ok(!has(game({ down: 3, ballOn: 30 }), 'FAKE_FG') && has(game({ down: 3, ballOn: 60, ltg: 65 }), 'FAKE_FG'), 'fake FG only in field-goal range');
+  let s = game({ down: 3, ballOn: 30, ltg: 38 }); E.act(s, 'FAKE_PUNT', roll(9));
+  eq([s.poss, s.ballOn, s.down], [0, 45, 1], 'fake punt on 9: +15, first down');
+  ok(/FAKE!/.test(s.last.headline), 'headline calls the fake: ' + s.last.headline);
+  s = game({ down: 3, ballOn: 30, ltg: 38 }); E.act(s, 'FAKE_PUNT', roll(5));
+  eq([s.poss, s.ballOn, s.down], [1, 80, 1], 'fake punt stuffed on 5: no gain, turnover on downs at the spot');
+  s = game({ down: 3, ballOn: 30, ltg: 38 }); E.act(s, 'FAKE_PUNT', roll(12));
+  eq([s.score[0], s.phase], [6, 'convert'], 'fake punt on 12: punter goes all the way');
+  s = game({ down: 3, ballOn: 30, ltg: 38 }); E.act(s, 'FAKE_PUNT', roll(2));
+  eq([s.poss, s.ballOn, s.stats[0].fumbles], [1, 80, 1], 'fake punt on 2: fumble lost at the line');
+  s = game({ down: 3, ballOn: 80, ltg: 86 }); E.act(s, 'FAKE_FG', roll(10));
+  eq([s.poss, s.ballOn, s.down, s.ltg], [0, 98, 1, 108], 'fake FG on 10: +18, first down');
+  s = game({ down: 3, ballOn: 80, ltg: 86 }); E.act(s, 'FAKE_FG', roll(6));
+  eq([s.poss, s.ballOn, s.score[0]], [1, 30, 0], 'fake FG incomplete on 6: turnover on downs, no points');
+  s = game({ down: 3, ballOn: 80, ltg: 86 }); E.act(s, 'FAKE_FG', roll(12));
+  eq(s.score[0], 6, 'fake FG on 12: touchdown');
+  const ai = game({ down: 3, ballOn: 40, ltg: 47, quarter: 4, clock: 120 }); ai.score = [3, 20];
+  eq(AI.decide(ai, Math.random).id, 'FAKE_PUNT', 'computer down two scores late on 3rd & 7 -> fake punt');
+  let fakes = 0; for (let n = 0; n < 4000; n++) if (AI.decide(game({ down: 3, ballOn: 55, ltg: 58 }), Math.random).id === 'FAKE_PUNT') fakes++;
+  ok(fakes > 100 && fakes < 400, 'computer occasionally fakes on 3rd & 3 at midfield (' + fakes + '/4000)');
 }
 
 section('Computer opponent');

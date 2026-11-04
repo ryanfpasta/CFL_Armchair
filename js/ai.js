@@ -53,12 +53,22 @@
           if (secondInRound && -lead > 3) return { id: thirdDownPlay(toGo, rng), why: 'OT, need a touchdown' };
           return { id: 'FG', why: 'OT field goal' };
         }
-        if (late && -lead > 3) return { id: thirdDownPlay(toGo, rng), why: 'trailing by more than 3 late, going for it' };
+        if (late && -lead > 3) {
+          if (toGo <= 10 && rng() < 0.3) return { id: 'FAKE_FG', why: 'trailing late, fake field goal' };
+          return { id: thirdDownPlay(toGo, rng), why: 'trailing by more than 3 late, going for it' };
+        }
+        // The occasional surprise, never when the kick would win or tie it late.
+        if (toGo <= 3 && !late && rng() < 0.05) return { id: 'FAKE_FG', why: 'surprise fake field goal' };
         return { id: 'FG', why: '3rd down in field-goal range' };
       }
       if (inRange) return { id: thirdDownPlay(toGo, rng), why: '3rd and short in range, going for it' };
       if (inOT) return { id: thirdDownPlay(toGo, rng), why: 'OT, no punting' };
       if (late && lead < 0 && -lead <= 8) return { id: thirdDownPlay(toGo, rng), why: 'trailing late, going for it' };
+      // Down two scores late: a punt won't get it back, so roll the dice on a fake.
+      if (late && -lead > 8 && toGo <= 12) return { id: 'FAKE_PUNT', why: 'trailing by two scores late, fake punt' };
+      // The occasional surprise from midfield on 3rd and short, but not when protecting a late lead.
+      if (toGo <= 4 && ball >= 45 && ball <= 75 && !(lead > 0 && q === 4) && rng() < 0.06)
+        return { id: 'FAKE_PUNT', why: 'surprise fake punt' };
       return { id: 'PUNT', why: '3rd down out of range, punt' };
     }
 

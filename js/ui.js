@@ -364,7 +364,8 @@
         '<div class="pgroup"><h4>Run</h4>' + pbtn(lbl(by.SR, 'Short'), col) + pbtn(lbl(by.LR, 'Long'), col) + '</div>' +
         '<div class="pgroup"><h4>Pass</h4>' + pbtn(lbl(by.SP, 'Short'), col) + pbtn(lbl(by.LP, 'Long'), col) + '</div>' +
         '<div class="pgroup"><h4>Kick</h4>' + pbtn(by.PUNT, col) + pbtn(lbl(by.FG, 'Field Goal'), col) + '</div>' +
-        '</div><div class="prow">' + pbtn(by.KNEEL) + pbtn(by.TIMEOUT) + '</div>';
+        '</div>' + '<div class="prow trick"><h4>Trick play · big risk, big reward</h4>' + pbtn(by.FAKE_PUNT) + pbtn(by.FAKE_FG) + '</div>' +
+        '<div class="prow">' + pbtn(by.KNEEL) + pbtn(by.TIMEOUT) + '</div>';
     }
     if (busy) Array.prototype.forEach.call(pane.querySelectorAll('button'), function (b) { b.disabled = true; });
   }
